@@ -1,8 +1,11 @@
 import sys
 
+from agent.loop import run_agent
+
 
 def main(task: str) -> None:
-    raise NotImplementedError("Agent loop implemented in M2")
+    result = run_agent(task)
+    print(result)
 
 
 if __name__ == "__main__":
