@@ -2,3 +2,4 @@ anthropic==0.40.0
 playwright==1.49.1
 pydantic==2.9.2
 rich==13.9.4
+pytest>=8.0.0
