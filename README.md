@@ -6,6 +6,18 @@
 
 ## Status
 
+**M3 — action executor (shipped)**
+
+| Deliverable | State |
+|---|---|
+| `agent/executor.py` — `dispatch_action()` mapping all six action types to Playwright calls | Done |
+| `click` — button → link → text locator fallback chain; element-not-found logs and continues | Done |
+| `type` — label → placeholder → text locator fallback chain; error logs and continues | Done |
+| `scroll` — `window.scrollBy` via `page.evaluate`, direction-aware | Done |
+| `extract_text` — `page.inner_text("body")`, truncated to 4 000 characters | Done |
+| `agent/loop.py` — calls `dispatch_action`; appends `{step, action, url, extracted}` to history | Done |
+| `tests/test_executor.py` — 10 unit tests (mock page/console), covering fallback chains and error paths | Done |
+
 **M2 — core agent loop + action schema (shipped)**
 
 | Deliverable | State |
@@ -16,7 +28,6 @@
 | `agent/main.py` — working CLI entry point | Done |
 | `tests/test_schema.py`, `tests/test_llm.py` | Done |
 | `navigate` + `done` actions fully wired | Done |
-| `click`, `type`, `scroll`, `extract_text` actions | Stubbed — full implementation in M3 |
 
 **M1 — scaffold + readme (shipped)**
 
@@ -32,7 +43,7 @@
 
 ## What It Does
 
-> **Target behavior** (fully implemented by M5). M3 adds browser interaction actions and the stuck detector; M4 adds Rich logging.
+> **Target behavior** (fully implemented by M5). M4 adds Rich logging.
 
 1. You provide a plain-English task via CLI (e.g. `"Go to Hacker News, find the top AI story, return its title and URL"`).
 2. The agent launches a Playwright Chromium browser, takes a full-page screenshot, and calls Claude claude-sonnet-4-6 with the task, step history, and the screenshot encoded as base64.
@@ -59,13 +70,14 @@ WebAct implements the **observe → plan → act → evaluate → recover** loop
  new screenshot            recovery re-prompt
 ```
 
-**Key modules (M2):**
+**Key modules (M3):**
 
 | Module | Responsibility |
 |---|---|
 | `agent/schema.py` | Pydantic discriminated union for all action types; `parse_action()` validator |
 | `agent/llm.py` | Builds multimodal message (image + text), calls Claude, extracts JSON from code fence, retries on parse failure |
-| `agent/loop.py` | Launches browser, runs the observe → plan → act loop, dispatches actions, tracks history |
+| `agent/executor.py` | Maps `click`, `type`, `scroll`, `extract_text` to Playwright calls; locator fallback chains; error-log-and-continue |
+| `agent/loop.py` | Launches browser, runs the observe → plan → act loop, delegates to executor, appends step history |
 | `agent/main.py` | CLI entry point |
 
 **Why screenshots beat CSS selectors:** Modern web UIs are dynamic, personalised, and layout-shifting. A vision model that reads pixels is immune to class-name churn, shadow DOM, and React re-renders that break recorded selectors within days. WebAct is a clean, minimal reference implementation of this paradigm — no heavyweight framework, just the core loop.
@@ -125,16 +137,14 @@ Located in `demos/` — each is a self-contained example task (implemented in M5
 
 ## Action Types
 
-| Action | Description | M2 Status |
+| Action | Description | Status |
 |---|---|---|
-| `navigate` | Load a URL in the browser (`page.goto`) | Implemented |
-| `click` | Click an element described by a screen coordinate or label | Stubbed |
-| `type` | Type text into the currently focused or described input field | Stubbed |
-| `scroll` | Scroll the page up, down, or to a position | Stubbed |
-| `extract_text` | Read and return visible text from the current page | Stubbed |
-| `done` | Signal task completion and return the final result to the user | Implemented |
-
-Stubbed actions log a warning and return without browser interaction. Full implementations land in M3.
+| `navigate` | Load a URL in the browser (`page.goto`) | Implemented (M2) |
+| `click` | Click an element by label; tries button role → link role → text locator | Implemented (M3) |
+| `type` | Fill a field by label; tries label → placeholder → text locator | Implemented (M3) |
+| `scroll` | Scroll up or down by pixel amount via `window.scrollBy` | Implemented (M3) |
+| `extract_text` | Read visible body text from the current page (capped at 4 000 chars) | Implemented (M3) |
+| `done` | Signal task completion and return the final result to the user | Implemented (M2) |
 
 ---
 
@@ -153,7 +163,7 @@ Stubbed actions log a warning and return without browser interaction. Full imple
 |---|---|---|
 | M1 | Scaffold, README, pinned deps | Shipped |
 | M2 | Agent loop — Playwright + Claude vision calls + action schema | Shipped |
-| M3 | Browser interaction actions, stuck detector and recovery prompts | Planned |
+| M3 | Action executor — all six action types wired to Playwright, step history | Shipped |
 | M4 | Rich terminal UI and step logging | Planned |
 | M5 | Demo scripts (`web_search`, `form_fill`, `data_extraction`) | Planned |
 

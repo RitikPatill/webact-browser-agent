@@ -6,44 +6,14 @@ import anthropic
 from playwright.sync_api import Page, sync_playwright
 from rich.console import Console
 
+from agent.executor import dispatch_action
 from agent.llm import get_next_action
 from agent.schema import (
-    Action,
-    ClickAction,
     DoneAction,
-    ExtractTextAction,
     NavigateAction,
-    ScrollAction,
-    TypeAction,
 )
 
 console = Console()
-
-
-def dispatch_action(page: Page, action: Action) -> str:
-    """
-    Execute action on the Playwright page.
-    Returns extracted text for extract_text, empty string otherwise.
-    M2 stubs: click/type/scroll print a warning and return "".
-    """
-    if isinstance(action, NavigateAction):
-        page.goto(action.url, wait_until="domcontentloaded")
-        return ""
-    elif isinstance(action, ClickAction):
-        console.print(f"[yellow]STUB[/yellow] click: {action.label!r} (not yet implemented)")
-        return ""
-    elif isinstance(action, TypeAction):
-        console.print(f"[yellow]STUB[/yellow] type: {action.label!r} = {action.text!r} (not yet implemented)")
-        return ""
-    elif isinstance(action, ScrollAction):
-        console.print(f"[yellow]STUB[/yellow] scroll {action.direction} {action.amount}px (not yet implemented)")
-        return ""
-    elif isinstance(action, ExtractTextAction):
-        console.print(f"[yellow]STUB[/yellow] extract_text: {action.description!r} (not yet implemented)")
-        return ""
-    else:
-        console.print(f"[red]Unknown action type: {type(action).__name__}[/red]")
-        return ""
 
 
 def run_agent(task: str, max_steps: int = 20) -> str:
@@ -82,7 +52,11 @@ def run_agent(task: str, max_steps: int = 20) -> str:
                 browser.close()
                 return action.result
 
-            extracted = dispatch_action(page, action)
+            if isinstance(action, NavigateAction):
+                page.goto(action.url, wait_until="domcontentloaded")
+                extracted = ""
+            else:
+                extracted = dispatch_action(page, action, console)
 
             history.append({
                 "step": step,
