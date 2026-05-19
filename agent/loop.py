@@ -5,6 +5,9 @@ import os
 import anthropic
 from playwright.sync_api import Page, sync_playwright
 from rich.console import Console
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.text import Text
 
 from agent.executor import dispatch_action
 from agent.llm import get_next_action
@@ -15,6 +18,15 @@ from agent.schema import (
 )
 
 console = Console()
+
+_ACTION_COLORS: dict[str, str] = {
+    "navigate":     "blue",
+    "click":        "cyan",
+    "type":         "magenta",
+    "scroll":       "yellow",
+    "extract_text": "green",
+    "done":         "bold green",
+}
 
 
 def run_agent(task: str, max_steps: int = 20) -> str:
@@ -36,11 +48,12 @@ def run_agent(task: str, max_steps: int = 20) -> str:
         browser = pw.chromium.launch(headless=headless)
         page = browser.new_page()
 
-        console.print(f"[bold green]WebAct[/bold green] starting task: {task!r}")
-        console.print(f"[dim]max_steps={max_steps}, headless={headless}[/dim]")
+        console.print(Panel(task, title="[bold]WebAct[/bold]", subtitle=f"max_steps={max_steps}"))
 
         for step in range(1, max_steps + 1):
-            console.print(f"\n[bold]Step {step}[/bold] — capturing screenshot …")
+            console.rule(f"[bold]Step {step} / {max_steps}[/bold]")
+            console.print(f"  [dim]URL:[/dim] {page.url}")
+
             screenshot_bytes = page.screenshot(full_page=True)
 
             recovery = is_stuck(history)
@@ -49,10 +62,16 @@ def run_agent(task: str, max_steps: int = 20) -> str:
             console.print("[dim]Calling Claude …[/dim]")
             action = get_next_action(task, history, screenshot_bytes, client, recovery=recovery)
 
-            console.print(f"[cyan]Action:[/cyan] {action.model_dump()}")
+            action_dict = action.model_dump()
+            action_type = action_dict.get("type", "")
+            color = _ACTION_COLORS.get(action_type, "white")
+            badge = Text(f" {action_type.upper()} ", style=f"bold white on {color}")
+            detail_parts = {k: v for k, v in action_dict.items() if k != "type"}
+            detail_str = " ".join(f"{k}={v!r}" for k, v in detail_parts.items())
+            console.print(badge, detail_str)
 
             if isinstance(action, DoneAction):
-                console.print(f"\n[bold green]Done![/bold green] Result: {action.result}")
+                console.print(Panel(action.result, title="[bold green]Done[/bold green]", border_style="green"))
                 browser.close()
                 return action.result
 
@@ -69,8 +88,10 @@ def run_agent(task: str, max_steps: int = 20) -> str:
                 "extracted": extracted,
             })
 
-        console.print(
-            f"\n[bold yellow]Max steps ({max_steps}) reached — task did not complete.[/bold yellow]"
-        )
+        console.print(Panel(
+            f"Max steps ({max_steps}) reached — task did not complete.",
+            title="[bold yellow]Stopped[/bold yellow]",
+            border_style="yellow",
+        ))
         browser.close()
         return f"Agent stopped: max {max_steps} steps reached without a done action."

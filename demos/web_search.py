@@ -1,10 +1,20 @@
 """
-Demo: Web Search
+Demo: DuckDuckGo search + snippet extraction
 
-Navigates to a search engine, enters a query, and extracts the top result's
-title and URL. Demonstrates the navigate → type → click → extract_text flow.
+Navigates to DuckDuckGo, searches for "Playwright Python", and extracts
+the first result's title and URL. Demonstrates navigate → type → click →
+extract_text flow.
 
-Implemented in M5.
+Run:
+    python demos/web_search.py
 """
+from agent.loop import run_agent
 
-raise NotImplementedError("Implemented in M5")
+TASK = (
+    "Go to https://duckduckgo.com, search for 'Playwright Python automation', "
+    "then extract the title and URL of the first organic result."
+)
+
+if __name__ == "__main__":
+    result = run_agent(TASK)
+    print(result)
