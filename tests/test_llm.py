@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent.llm import get_next_action
+from agent.llm import get_next_action, RECOVERY_ADDENDUM
 from agent.schema import DoneAction, NavigateAction
 
 
@@ -56,3 +56,11 @@ def test_exhausted_retries_raises():
             "go to example.com", [], DUMMY_SCREENSHOT, client, max_retries=3
         )
     assert client.messages.create.call_count == 3
+
+
+def test_recovery_flag_includes_addendum_in_system_prompt():
+    """When recovery=True the system prompt sent to Claude contains RECOVERY_ADDENDUM."""
+    client = _make_client_with_replies(VALID_NAVIGATE_FENCE)
+    get_next_action("task", [], DUMMY_SCREENSHOT, client, recovery=True)
+    call_kwargs = client.messages.create.call_args[1]  # keyword args
+    assert "RECOVERY MODE" in call_kwargs["system"]

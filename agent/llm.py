@@ -36,6 +36,13 @@ Rules:
 - Output ONLY the JSON code fence — no explanation, no markdown outside the fence.
 """
 
+RECOVERY_ADDENDUM = (
+    "\n\n---\n"
+    "RECOVERY MODE: The URL and page content have not changed for the last 2 steps — "
+    "you are stuck. Briefly reason about what has not worked, then choose a DIFFERENT "
+    "action (different type or different target). Do not repeat the immediately preceding action."
+)
+
 _JSON_FENCE_RE = re.compile(r"```json\s*(.*?)\s*```", re.DOTALL)
 
 
@@ -89,12 +96,14 @@ def get_next_action(
     screenshot_bytes: bytes,
     client: anthropic.Anthropic,
     max_retries: int = 3,
+    recovery: bool = False,
 ) -> Action:
     """
     Call Claude claude-sonnet-4-6, extract JSON, parse to Action.
     Retries up to max_retries times on parse/validation errors.
     Raises RuntimeError if all retries are exhausted.
     """
+    system = SYSTEM_PROMPT + RECOVERY_ADDENDUM if recovery else SYSTEM_PROMPT
     messages: list[dict] = [
         {
             "role": "user",
@@ -107,7 +116,7 @@ def get_next_action(
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=512,
-            system=SYSTEM_PROMPT,
+            system=system,
             messages=messages,
         )
         reply_text = response.content[0].text

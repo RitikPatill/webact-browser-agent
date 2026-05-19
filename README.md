@@ -6,6 +6,17 @@
 
 ## Status
 
+**M4 — stuck detection + recovery prompt (shipped)**
+
+| Deliverable | State |
+|---|---|
+| `agent/stuck.py` — `is_stuck()`: detects same URL + content hash for ≥ 2 consecutive steps | Done |
+| `agent/llm.py` — `RECOVERY_ADDENDUM` constant; `recovery=` flag appends it to the system prompt | Done |
+| `agent/loop.py` — calls `is_stuck(history)` before each LLM call; logs yellow warning; passes flag through | Done |
+| Max-step guard — bold yellow exit message; return string updated to match spec | Done |
+| `tests/test_stuck.py` — 7 unit tests covering all edge cases (empty, 1 entry, diff URL, diff text, identical, window variants) | Done |
+| `tests/test_llm.py` — extended with `test_recovery_flag_includes_addendum_in_system_prompt` | Done |
+
 **M3 — action executor (shipped)**
 
 | Deliverable | State |
@@ -43,7 +54,7 @@
 
 ## What It Does
 
-> **Target behavior** (fully implemented by M5). M4 adds Rich logging.
+> Steps 1–6 are implemented through M4. M5 will add the demo scripts.
 
 1. You provide a plain-English task via CLI (e.g. `"Go to Hacker News, find the top AI story, return its title and URL"`).
 2. The agent launches a Playwright Chromium browser, takes a full-page screenshot, and calls Claude claude-sonnet-4-6 with the task, step history, and the screenshot encoded as base64.
@@ -70,14 +81,15 @@ WebAct implements the **observe → plan → act → evaluate → recover** loop
  new screenshot            recovery re-prompt
 ```
 
-**Key modules (M3):**
+**Key modules (M4):**
 
 | Module | Responsibility |
 |---|---|
 | `agent/schema.py` | Pydantic discriminated union for all action types; `parse_action()` validator |
-| `agent/llm.py` | Builds multimodal message (image + text), calls Claude, extracts JSON from code fence, retries on parse failure |
+| `agent/llm.py` | Builds multimodal message (image + text), calls Claude, extracts JSON from code fence, retries on parse failure; `recovery=` flag appends recovery addendum to system prompt |
 | `agent/executor.py` | Maps `click`, `type`, `scroll`, `extract_text` to Playwright calls; locator fallback chains; error-log-and-continue |
-| `agent/loop.py` | Launches browser, runs the observe → plan → act loop, delegates to executor, appends step history |
+| `agent/loop.py` | Launches browser, runs the observe → plan → act loop, delegates to executor, appends step history; detects stuck state and triggers recovery |
+| `agent/stuck.py` | `is_stuck(history, window=2)` — returns True when the last N entries share identical URL and extracted-text hash |
 | `agent/main.py` | CLI entry point |
 
 **Why screenshots beat CSS selectors:** Modern web UIs are dynamic, personalised, and layout-shifting. A vision model that reads pixels is immune to class-name churn, shadow DOM, and React re-renders that break recorded selectors within days. WebAct is a clean, minimal reference implementation of this paradigm — no heavyweight framework, just the core loop.
@@ -164,7 +176,7 @@ Located in `demos/` — each is a self-contained example task (implemented in M5
 | M1 | Scaffold, README, pinned deps | Shipped |
 | M2 | Agent loop — Playwright + Claude vision calls + action schema | Shipped |
 | M3 | Action executor — all six action types wired to Playwright, step history | Shipped |
-| M4 | Rich terminal UI and step logging | Planned |
+| M4 | Stuck detection + recovery prompt; max-step guard | Shipped |
 | M5 | Demo scripts (`web_search`, `form_fill`, `data_extraction`) | Planned |
 
 <!-- TODO: update State column as milestones ship -->
