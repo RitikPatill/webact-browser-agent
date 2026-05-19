@@ -8,6 +8,7 @@ from rich.console import Console
 
 from agent.executor import dispatch_action
 from agent.llm import get_next_action
+from agent.stuck import is_stuck
 from agent.schema import (
     DoneAction,
     NavigateAction,
@@ -42,8 +43,11 @@ def run_agent(task: str, max_steps: int = 20) -> str:
             console.print(f"\n[bold]Step {step}[/bold] — capturing screenshot …")
             screenshot_bytes = page.screenshot(full_page=True)
 
+            recovery = is_stuck(history)
+            if recovery:
+                console.print("[yellow]Stuck detected (same URL + content for 2 steps) — injecting recovery prompt[/yellow]")
             console.print("[dim]Calling Claude …[/dim]")
-            action = get_next_action(task, history, screenshot_bytes, client)
+            action = get_next_action(task, history, screenshot_bytes, client, recovery=recovery)
 
             console.print(f"[cyan]Action:[/cyan] {action.model_dump()}")
 
@@ -66,7 +70,7 @@ def run_agent(task: str, max_steps: int = 20) -> str:
             })
 
         console.print(
-            f"\n[yellow]Max steps ({max_steps}) reached without a done action.[/yellow]"
+            f"\n[bold yellow]Max steps ({max_steps}) reached — task did not complete.[/bold yellow]"
         )
         browser.close()
-        return f"Agent stopped after {max_steps} steps without completing the task."
+        return f"Agent stopped: max {max_steps} steps reached without a done action."
