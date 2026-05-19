@@ -1,10 +1,21 @@
 """
-Demo: Data Extraction
+Demo: Wikipedia infobox scrape
 
-Scrapes a structured table or list from a live webpage and returns it as
-structured text. Demonstrates the navigate → scroll → extract_text flow.
+Navigates to the Python (programming language) Wikipedia article and
+extracts key infobox facts: creator, first appeared, and stable release.
+Demonstrates navigate → scroll → extract_text → done flow.
 
-Implemented in M5.
+Run:
+    python demos/data_extraction.py
 """
+from agent.loop import run_agent
 
-raise NotImplementedError("Implemented in M5")
+TASK = (
+    "Go to https://en.wikipedia.org/wiki/Python_(programming_language). "
+    "Extract the creator, year first appeared, and latest stable release "
+    "from the infobox on the right side of the page."
+)
+
+if __name__ == "__main__":
+    result = run_agent(TASK)
+    print(result)
