@@ -1,5 +1,9 @@
 # WebAct: Self-Correcting Browser Agent
 
+
+> **Video walkthrough:** https://youtu.be/_lWN_2jGIUM
+> **60-second overview:** https://youtu.be/Adbi4MXKI54
+
 > A Python agent that uses vision-LLMs to autonomously navigate browsers, self-evaluate progress, and recover when stuck.
 
 <!-- TODO: replace with a 5-10 second demo gif. Record with ScreenToGif on
